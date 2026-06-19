@@ -454,12 +454,12 @@
         ctxG.strokeStyle = '#f1f5f9';
         ctxG.lineWidth = 1;
         ctxG.beginPath();
-        for(let i = 0; i <= 35; i+=5) {
+        for(let i = 0; i <= 30; i+=2) {
             let xGrid = i * state.scaleL;
             if (xGrid > maxScaleX) break;
             ctxG.moveTo(mapX(xGrid), padTop); ctxG.lineTo(mapX(xGrid), h - padBottom);
         }
-        for(let i = 0; i <= 50000; i+=10000) {
+        for(let i = 0; i <= 45000; i+=5000) {
             let yGrid = i * state.scaleF;
             if (yGrid > maxScaleY) break;
             ctxG.moveTo(padLeft, mapY(yGrid)); ctxG.lineTo(padLeft + graphW, mapY(yGrid));
