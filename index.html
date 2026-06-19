@@ -481,13 +481,13 @@
         ctxG.restore();
 
         ctxG.font = "11px Arial"; ctxG.textAlign = "center";
-        for(let i = 0; i <= 35; i+=5) {
+        for(let i = 0; i <= 30; i+=2) {
             let xGrid = i * state.scaleL;
             if (xGrid > maxScaleX) break;
             ctxG.fillText(xGrid.toFixed(1), mapX(xGrid), h - padBottom + 16);
         }
         ctxG.textAlign = "right";
-        for(let i = 0; i <= 50000; i+=10000) {
+        for(let i = 0; i <= 45000; i+=5000) {
             let yGrid = i * state.scaleF;
             if (yGrid > maxScaleY) break;
             ctxG.fillText(Math.round(yGrid), padLeft - 8, mapY(yGrid) + 4);
