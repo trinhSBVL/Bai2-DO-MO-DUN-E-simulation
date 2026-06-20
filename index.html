@@ -15,8 +15,6 @@
         .left-panel { width: 33.33%; position: relative; background: #eef2f6; border-right: 2px solid #cbd5e1; display: flex; flex-direction: column; }
         .right-panel { width: 66.67%; position: relative; background: #ffffff; display: flex; flex-direction: row;}
         .graph-container { flex-grow: 1; position: relative; padding: 10px; display: flex; }
-        
-        /* Cột điều khiển thu hẹp lại còn 120px */
         .control-panel { width: 120px; background: #f8fafc; border-left: 1px solid #e2e8f0; padding: 15px 10px; display: flex; flex-direction: column; z-index: 10; }
         
         /* Thanh trượt gia tải dọc */
@@ -72,7 +70,7 @@
             <canvas id="canvasSpecimen"></canvas>
         </div>
 
-        <!-- PANEL PHẢI -->
+         <!-- PANEL PHẢI -->
         <div class="right-panel">
             <div class="graph-container">
                 <canvas id="canvasGraph"></canvas>
@@ -88,7 +86,7 @@
                         <b>GĐ Củng cố:</b> P tăng ít - ΔL tăng nhiều. Tổ chức biến đổi.
                     </div>
                     <div id="anno-4" class="annotation anno-red">
-                        <b>GĐ Phá huỷ:</b> P giảm dần, xuất hiện điểm thắt mẫu đứt gãy.
+                        <b>GĐ Phá huỷ:</b> P giảm dần - xuất hiện điểm thắt mẫu đứt gãy.
                     </div>
                 </div>
             </div>
@@ -98,8 +96,12 @@
                 <h3 class="font-bold text-center text-gray-700 uppercase text-[11px] border-b pb-2">KÉO GIA TẢI</h3>
                 
                 <div class="flex-grow flex justify-center py-4 relative">
-                    <!-- Con trượt dọc. Top = 25 (0 load), Bottom = 0 (max load) -->
-                    <input type="range" id="pullSlider" min="0" max="25" step="0.05" value="25" orient="vertical" class="vertical-slider">
+                    <!-- 
+                         Thanh trượt ảo với 1000 bước (Step = 1).
+                         Nửa đầu (500 bước) map biến dạng 0 -> 0.9mm (bước chia 0.005)
+                         Nửa sau (500 bước) map biến dạng 0.9 -> 25mm (bước chia 0.05)
+                    -->
+                    <input type="range" id="pullSlider" min="0" max="1000" step="1" value="1000" orient="vertical" class="vertical-slider">
                     
                     <!-- Hướng dẫn mũi tên thả dọc -->
                     <div class="absolute left-1/2 transform -translate-x-1/2 pointer-events-none opacity-40" style="bottom: 15px;">
@@ -107,8 +109,8 @@
                     </div>
                 </div>
 
-                <div class="mt-auto bg-gray-200 p-2 rounded text-[15px] text-center">
-                    <div class="font-bold text-gray-800 border-b border-gray-300 pb-1 mb-1">Giá trị hiện tại</div>
+                <div class="mt-auto bg-gray-200 p-2 rounded text-[13px] text-center">
+                    <div class="font-bold text-gray-700 border-b border-gray-300 pb-1 mb-1">Giá trị hiện tại</div>
                     <div class="text-red-600 font-bold font-mono">P: <span id="valP">0</span> N</div>
                     <div class="text-blue-600 font-bold font-mono">ΔL: <span id="valdL">0.00</span> mm</div>
                 </div>
@@ -127,9 +129,7 @@
         breakRatio: 0.5 
     };
 
-    const CONSTANTS = {
-        MAX_X_BASE: 25
-    };
+    const CONSTANTS = { MAX_X_BASE: 25 };
 
     const canvasSpecimen = document.getElementById('canvasSpecimen');
     const ctxS = canvasSpecimen.getContext('2d');
@@ -156,19 +156,24 @@
             return 500 * Math.pow(x / 0.3, 2);
         }
         else if (x <= 0.46) {
-            return 500 + (25000 - 500) * ((x - 0.3) / 0.16);
+            return 500 + (24000 - 500) * ((x - 0.3) / 0.16);
         }
-        else if (x <= 0.5) {
-            let t = (x - 0.46) / 0.04; 
-            return 25000 + 600 * t * (2 - t); 
+        // Chuyển tiếp Đàn hồi -> Chảy dẻo (0.46 đến 0.9) - Cong lồi từ 24.000 -> 25.900
+        else if (x <= 0.9) {
+            let t = (x - 0.46) / (0.9 - 0.46); 
+            return 24000 + (25900 - 24000) * Math.sqrt(t); 
         }
-        else if (x <= 4.5) {
-            const freq = 12 * Math.PI * 2 / (4.5 - 0.5);
-            return 25600 + 300 * Math.sin((x - 0.5) * freq);
+        // Chảy dẻo (0.9 đến 5.5)
+        else if (x <= 5.5) {
+            const freq = 12 * Math.PI * 2 / (5.5 - 0.9);
+            return 26000 + 400 * Math.sin((x - 0.9) * freq);
         }
+        // Củng cố (5.5 đến 20)
         else if (x <= 20) {
-            return 38000 - 51.6129 * Math.pow(x - 20, 2);
+            // Hệ số a: (38000 - 26000) / (20 - 5.5)^2 = 12100 / 210.25 ≈ 57.5505
+            return 38000 - 57.5505 * Math.pow(x - 20, 2);
         }
+        // Phá huỷ (20 đến 25)
         else if (x <= 25) {
             return 38000 - 472 * Math.pow(x - 20, 2);
         }
@@ -480,16 +485,14 @@
 
         const maxRealX = 0.3 * state.L0;
         
-        // Tính toán linh hoạt Trục Tung sao cho luôn > 5% Lực phá huỷ (Max Force)
         const maxForceReal = 38000 * state.scaleF;
         let maxScaleY = Math.ceil((maxForceReal * 1.05) / 5000) * 5000;
-        if (maxScaleY < maxForceReal * 1.05) { maxScaleY += 5000; } // Đảm bảo > 5% khoảng trống an toàn
+        if (maxScaleY < maxForceReal * 1.05) { maxScaleY += 5000; } 
         const stepY = maxScaleY / 5;
 
         const mapX = (realX) => padLeft + (realX / maxRealX) * graphW;
         const mapY = (y) => h - padBottom - (y / maxScaleY) * graphH;
 
-        // Vẽ Grid
         ctxG.strokeStyle = '#f1f5f9';
         ctxG.lineWidth = 1;
         ctxG.beginPath();
@@ -534,8 +537,8 @@
                 let realX = xB * state.scaleL;
                 let realY = pB * state.scaleF;
 
-                if (xB <= 0.46) ctxG.strokeStyle = '#2563eb';      
-                else if (xB <= 4.5) ctxG.strokeStyle = '#d97706';    
+                if (xB <= 0.9) ctxG.strokeStyle = '#2563eb';      
+                else if (xB <= 5.5) ctxG.strokeStyle = '#d97706';    
                 else if (xB <= 20) ctxG.strokeStyle = '#16a34a';   
                 else ctxG.strokeStyle = '#dc2626';                 
 
@@ -568,8 +571,8 @@
     function updateAnnotations() {
         const x = state.xBase;
         if (x > 0.1) annotations[0].classList.add('show'); else annotations[0].classList.remove('show');
-        if (x > 0.5) annotations[1].classList.add('show'); else annotations[1].classList.remove('show');
-        if (x > 4.5) annotations[2].classList.add('show'); else annotations[2].classList.remove('show');
+        if (x > 0.9) annotations[1].classList.add('show'); else annotations[1].classList.remove('show');
+        if (x > 5.5) annotations[2].classList.add('show'); else annotations[2].classList.remove('show');
         if (x > 20) annotations[3].classList.add('show'); else annotations[3].classList.remove('show');
     }
 
@@ -595,20 +598,25 @@
         state.scaleL = state.L0 / 100;
     }
 
-    // --- SỰ KIỆN THANH TRƯỢT GIA TẢI ---
+    // --- SỰ KIỆN THANH TRƯỢT GIA TẢI KÉP ---
     pullSlider.addEventListener('input', (e) => {
-        // Slider value 25 (Top) -> 0 (Bottom)
-        // Chúng ta lấy xBase từ 0 (chưa kéo) -> 25 (đứt) bằng cách lật ngược value
-        const val = parseFloat(e.target.value);
-        state.xBase = CONSTANTS.MAX_X_BASE - val;
+        // Slider value đi từ 1000 (Top/Start) -> 0 (Bottom/Đứt gãy)
+        // Số bước: Nửa đầu (500) x 0.005mm (Từ 0 đến 0.9mm) và Nửa sau (500) x 0.05mm (Từ 0.9 đến 25mm)
+        const val = 1000 - parseInt(e.target.value, 10);
+        
+        if (val <= 500) {
+            let rawX = (val / 500) * 0.9;
+            state.xBase = Math.round(rawX / 0.005) * 0.005; // Mịn (Đàn hồi + Chuyển tiếp)
+        } else {
+            let rawX = 0.9 + ((val - 500) / 500) * (25 - 0.9);
+            state.xBase = 0.9 + Math.round((rawX - 0.9) / 0.05) * 0.05; // Thô (Dẻo + Phá huỷ)
+        }
         
         if (state.xBase === 0) {
-            // Khi kéo slider về vị trí xuất phát, reset lại vị trí đứt ngẫu nhiên và mở khóa Input
             inputD.disabled = false;
             inputL0.disabled = false;
             state.breakRatio = Math.random() * (0.666 - 0.333) + 0.333; 
         } else {
-            // Đang kéo dở thì khóa input thông số mẫu
             inputD.disabled = true;
             inputL0.disabled = true;
         }
